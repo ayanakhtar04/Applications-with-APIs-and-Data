@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, redirect, abort, render_template
+from werkzeug.exceptions import HTTPException
 import threading
 
 app = Flask(__name__)
@@ -67,6 +68,28 @@ def redirect_code(code: str):
         abort(404)
     return redirect(long_url, code=302)
 
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(err):
+    """Return JSON for errors occurring on the /shorten endpoint so the
+    frontend JS can show a clean message instead of failing to parse HTML.
+    For other routes, keep default behavior (especially during debug) so
+    Flask's debugger / HTML pages still help during development.
+    """
+    # Pass through HTTP errors (404, 400, etc.) unchanged unless we want
+    # to enforce JSON for /shorten requests.
+    if isinstance(err, HTTPException):
+        if request.path.startswith('/shorten'):
+            # Provide consistent JSON structure.
+            return jsonify({'error': err.description or 'Request error'}), err.code
+        return err
+
+    # Log unexpected exceptions.
+    app.logger.exception('Unhandled exception')
+    if request.path.startswith('/shorten'):
+        return jsonify({'error': 'Internal server error'}), 500
+    # For non-/shorten paths, re-raise so Flask can show the debug page.
+    raise err
 
 if __name__ == '__main__':
     # Debug server for development

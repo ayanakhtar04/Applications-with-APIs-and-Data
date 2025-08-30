@@ -33,6 +33,23 @@
   const form = document.getElementById('shorten-form');
   const resultBox = document.getElementById('result');
   const errorBox = document.getElementById('error');
+  
+  async function safeParseJSON(resp) {
+    const contentType = resp.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      // Fallback to text so we can display something helpful.
+      const text = await resp.text();
+      if (!text.trim()) return {}; // empty body
+      return { _rawText: text };
+    }
+    if (resp.status === 204) return {}; // No Content
+    try {
+      return await resp.json();
+    } catch (e) {
+      return { _parseError: true };
+    }
+  }
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     errorBox.textContent = '';
@@ -43,17 +60,31 @@
       return;
     }
     try {
-      const resp = await fetch('/shorten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
-      const data = await resp.json();
-      if(!resp.ok){
-        throw new Error(data.error || 'Unknown error');
+      const resp = await fetch('/shorten', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ url })
+      });
+
+      const data = await safeParseJSON(resp);
+
+      if (!resp.ok) {
+        const msg = data.error || data._rawText || (data._parseError ? 'Malformed server response' : 'Unknown error');
+        throw new Error(msg);
       }
+
+      if (!data.short_url) {
+        throw new Error('Server response missing short_url');
+      }
+
       resultBox.innerHTML = `<strong>Short URL:</strong> <a href="${data.short_url}" target="_blank" rel="noopener">${data.short_url}</a>`;
       resultBox.style.display = 'block';
     } catch(err){
-      errorBox.textContent = err.message;
+      errorBox.textContent = err.message || 'Unexpected error';
     }
-  });
 </script>
 </body>
 </html>
