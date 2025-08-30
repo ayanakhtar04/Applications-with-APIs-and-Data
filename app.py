@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, redirect, abort
+from flask import Flask, request, jsonify, redirect, abort, render_template
 import threading
 
 app = Flask(__name__)
@@ -31,8 +31,7 @@ def generate_short_code() -> str:
 
 @app.route('/', methods=['GET'])
 def home():
-    # Placeholder: later this will return an HTML form to submit a long URL.
-    return 'Hello, world!'
+    return render_template('index.html')
 
 
 @app.route('/shorten', methods=['POST'])

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Simple URL Shortener</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 2rem; max-width: 640px; }
+    h1 { font-size: 1.8rem; }
+    form { display: flex; gap: 0.5rem; margin-top: 1rem; }
+    input[type=text] { flex: 1; padding: 0.6rem; font-size: 1rem; }
+    button { padding: 0.6rem 1rem; font-size: 1rem; cursor: pointer; }
+    .result { margin-top: 1.25rem; padding: 0.75rem 1rem; background: #f5f5f5; border-radius: 6px; display:none; }
+    .error { color: #b00020; margin-top: 0.75rem; }
+    footer { margin-top: 3rem; font-size: 0.8rem; color: #666; }
+  </style>
+</head>
+<body>
+  <h1>URL Shortener</h1>
+  <p>Enter a long URL below to generate a short link.</p>
+  <form id="shorten-form" method="post" action="/shorten">
+    <input type="text" name="url" id="url-input" placeholder="https://example.com/very/long/path" required />
+    <button type="submit">Shorten</button>
+  </form>
+  <div id="error" class="error"></div>
+  <div id="result" class="result"></div>
+
+  <footer>
+    In-memory prototype. Links will disappear when the server restarts.
+  </footer>
+
+<script>
+  const form = document.getElementById('shorten-form');
+  const resultBox = document.getElementById('result');
+  const errorBox = document.getElementById('error');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorBox.textContent = '';
+    resultBox.style.display = 'none';
+    const url = document.getElementById('url-input').value.trim();
+    if(!url){
+      errorBox.textContent = 'Please enter a URL.';
+      return;
+    }
+    try {
+      const resp = await fetch('/shorten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+      const data = await resp.json();
+      if(!resp.ok){
+        throw new Error(data.error || 'Unknown error');
+      }
+      resultBox.innerHTML = `<strong>Short URL:</strong> <a href="${data.short_url}" target="_blank" rel="noopener">${data.short_url}</a>`;
+      resultBox.style.display = 'block';
+    } catch(err){
+      errorBox.textContent = err.message;
+    }
+  });
+</script>
+</body>
+</html>
